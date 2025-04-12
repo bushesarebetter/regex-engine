@@ -204,11 +204,43 @@ print(time.perf_counter() - t)
 '''
 
 
+def time_python_re(pattern, text, cap):
+    # Run in a child process so a catastrophic backtrack can be killed after `cap` seconds.
+    try:
+        out = subprocess.run([sys.executable, '-c', RE_TIMER, pattern, text],
+                             capture_output=True, text=True, timeout=cap, check=True)
+    except subprocess.TimeoutExpired:
+        return None
+    return float(out.stdout)
 
 
+def timed(f):
+    t = time.perf_counter()
+    result = f()
+    return result, time.perf_counter() - t
 
 
+def fmt(seconds):
+    return f'{seconds * 1000:.2f} ms' if seconds < 1 else f'{seconds:.2f} s'
 
 
+def benchmark(ns=(5, 10, 15, 20, 22, 24, 26, 28, 30, 50, 100), cap=3.0):
+    print(f'pattern (a?){{n}}a{{n}} against a{{n}}, python re capped at {cap:.0f} s\n')
+    print(f'{"n":>4}  {"NFA sim":>10}  {"DFA build+run":>14}  {"python re":>14}')
+    re_gave_up = False
+    for n in ns:
+        pattern, text = 'a?' * n + 'a' * n, 'a' * n
+        ok_nfa, t_nfa = timed(lambda: NFA(pattern).fullmatch(text))
+        ok_dfa, t_dfa = timed(lambda: DFA(NFA(pattern)).fullmatch(text))
+        assert ok_nfa and ok_dfa
+        t_re = None if re_gave_up else time_python_re(pattern, text, cap)
+        re_gave_up = t_re is None
+        re_col = fmt(t_re) if t_re is not None else f'> {cap:.0f} s'
+        print(f'{n:>4}  {fmt(t_nfa):>10}  {fmt(t_dfa):>14}  {re_col:>14}', flush=True)
 
 
+if __name__ == '__main__':
+    if len(sys.argv) == 3:
+        print(NFA(sys.argv[1]).fullmatch(sys.argv[2]))
+    else:
+        benchmark()
