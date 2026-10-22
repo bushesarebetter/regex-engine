@@ -1,8 +1,10 @@
-# regex-engine
+# Thompson regex engine
 
 A regex matcher that compiles patterns to a Thompson NFA and simulates it with state sets, so it never backtracks. There's also an optional subset construction that turns the NFA into a DFA.
 
 Supported syntax: literals, `.`, concatenation, `|`, `*`, `+`, `?`, parentheses, and character classes like `[a-z]`, `[^abc]`. A backslash makes the next character literal (`\.`, `\*`), so `\d` and friends aren't supported. Matching is `fullmatch` only.
+
+[Setup](#setup) · [Run](#run) · [Benchmark](#benchmark) · [Tests](#test)
 
 ## Setup
 
@@ -10,14 +12,16 @@ Python 3.10+ and nothing else. You only need `pytest` if you want to run the tes
 
 ## Run
 
-```
+```bash
 python regex_engine.py                  # benchmark
 python regex_engine.py "a(b|c)*d" abcbd # match one string, prints True/False
 ```
 
+## Benchmark
+
 The benchmark matches `(a?){n}a{n}` (written out as `a?a?...aaa`) against `a{n}`. Python's `re` backtracks through roughly 2^n ways to split the input, so each `re` timing runs in a child process that gets killed after 3 seconds. Once it times out, the larger n values are skipped. One run on my laptop:
 
-```
+```text
    n     NFA sim   DFA build+run       python re
    5     1.12 ms         0.30 ms         0.04 ms
   10     0.28 ms         0.44 ms         0.10 ms
@@ -34,7 +38,13 @@ For small n, `re` wins because it's C. By n=26 it can't finish in 3 seconds, and
 
 ## Test
 
+Install the test dependency:
+
+```bash
+pip install pytest
 ```
+
+```bash
 python -m pytest -q
 ```
 
